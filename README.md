@@ -173,7 +173,7 @@ get_price <- function(crypto, base) {
           update_time = Sys.time()
         ))
       } else {
-        stop("داده از CryptoCompare نامعتبر است.")
+        stop("Data from CryptoCompare is invalid.")
       }
     }, error = function(e) {
       return(NULL)  
@@ -279,7 +279,7 @@ server <- function(input, output) {
       }
       return(rsi_text)
     }, error = function(e) {
-      return("خطا در محاسبه RSI")
+      return("Error in RSI calculation")
     })
   }
   
@@ -330,8 +330,7 @@ server <- function(input, output) {
             irt_balance <- as.numeric(wallet$balance[wallet$currency == "IRT"])
             if (length(irt_balance) > 0 && !is.na(irt_balance)) {
               amount_to_buy <- (irt_balance * buy_percent) / market_data$last_price
-              # نمایش پیام (بدون اجرای واقعی معامله)
-              showNotification(paste("شرایط خرید فراهم شد. مقدار پیشنهادی:", round(amount_to_buy, 6)), type = "message")
+              showNotification(paste("Buy conditions met. Suggested amount:", round(amount_to_buy, 6)), type = "message")
             }
           }
         }
@@ -344,13 +343,13 @@ server <- function(input, output) {
     current_price <- get_price(crypto, "usdt")$price
     entry_price <- get_entry_price(crypto) 
     
-    if (current_price >= entry_price * 1.035) {  # حد سود ۳.۵٪
+    if (current_price >= entry_price * 1.035) { 
       nobitex_api_sell(crypto, "usdt", amount = get_holding_amount(crypto))
-      showNotification(paste("فروش سودده", crypto))
+      showNotification(paste("Profitable sell", crypto))
     } 
-    else if (current_price <= entry_price * 0.99) {  # حد ضرر ۱٪
+    else if (current_price <= entry_price * 0.99) { 
       nobitex_api_sell(crypto, "usdt", amount = get_holding_amount(crypto))
-      showNotification(paste("فروش ضررده", crypto))
+      showNotification(paste("Loss-making sell", crypto))
     }
   }
   
@@ -368,7 +367,7 @@ server <- function(input, output) {
       auto_trade(FALSE)
     })    
     
-    withProgress(message = 'در حال دریافت داده...', {
+    withProgress(message = 'Fetching data...', {
       data <- get_price(input$crypto, input$base)
       price_data(data)
       stats <- get_market_stats(input$crypto, input$base)
@@ -384,64 +383,64 @@ server <- function(input, output) {
         active_data <- get_active_wallets(input$user_token)
         active_wallets_data(active_data)
         if (!is.null(active_data) && nrow(active_data) > 0) {
-          wallet_status_text <- "\n\nوضعیت کیف پول: ✅ کیف پول فعال"
+          wallet_status_text <- "\n\nWallet status: ✅ Active wallet"
         } else {
-          wallet_status_text <- "\n\nوضعیت کیف پول: ❌ کیف پول غیرفعال"
+          wallet_status_text <- "\n\nWallet status: ❌ Inactive wallet"
         }
         if (input$show_wallet == "yes" && !is.null(wallet_data) && "currency" %in% colnames(wallet_data)) {
           filtered <- wallet_data %>% filter(balance > 0)
           if (nrow(filtered) > 0) {
-            wallet_assets_text <- paste0("\n\n دارایی‌های شما:\n",
+            wallet_assets_text <- paste0("\n\n Your assets:\n",
                                          paste0(filtered$currency, " = ", format(filtered$balance, big.mark = ","), collapse = "\n"))
           } else {
-            wallet_assets_text <- "\n\n کیف پول شما خالی است."
+            wallet_assets_text <- "\n\nYour wallet is empty."
           }
         }
       }
       
-      # تحلیل قیمت نسبت به میانگین ۱۰ دقیقه‌ای (از CryptoCompare)
+      # Price analysis compared to 10-minute average (from CryptoCompare)  
       ma_comparison <- calculate_ma_comparison(input$crypto)
       
       ma_text <- if(!ma_comparison$success) {
       } else {
         paste0(
-          "\n\nوضعیت: قیمت فعلی ", ma_comparison$comparison, " از میانگین 10 دقیقه است"
+          "\n\nStatus: Current price", ma_comparison$comparison, "It is above the 10-minute average"
         )
       }
       
       refresh_count(refresh_count() + 1)
       
       if (!is.null(data)) {
-        price_str <- ifelse(is.na(data$price), "نامعلوم", format(data$price, big.mark = ","))
-        ask_str <- ifelse(is.na(data$best_ask), "نامعلوم", format(data$best_ask, big.mark = ","))
-        bid_str <- ifelse(is.na(data$best_bid), "نامعلوم", format(data$best_bid, big.mark = ","))
+        price_str <- ifelse(is.na(data$price), "Unknown", format(data$price, big.mark = ","))
+        ask_str <- ifelse(is.na(data$best_ask), "Unknown", format(data$best_ask, big.mark = ","))
+        bid_str <- ifelse(is.na(data$best_bid), "Unknown", format(data$best_bid, big.mark = ","))
         diff_percent <- if (!is.na(data$best_ask) && !is.na(data$best_bid) && data$best_bid != 0) {
           round(((data$best_bid - data$best_ask) / data$best_bid) * 100, 2)
         } else NA
-        diff_str <- ifelse(is.na(diff_percent), "نامعلوم", paste0(diff_percent, " %"))
+        diff_str <- ifelse(is.na(diff_percent), "Unknown", paste0(diff_percent, " %"))
         
         stats_text <- if (!is.null(market_stats())) paste0(
-          "\n\nحجم مبدا (Volume Src): ", format(as.numeric(market_stats()$volumeSrc), big.mark = ","),
-          "\n\nحجم مقصد (Volume Dst): ", format(as.numeric(market_stats()$volumeDst), big.mark = ","),
-          "\n\nتغییرات روزانه (Day Change): ", as.character(market_stats()$dayChange)
+          "\n\nVolume Src: ", format(as.numeric(market_stats()$volumeSrc), big.mark = ","),
+          "\n\nVolume Dst: ", format(as.numeric(market_stats()$volumeDst), big.mark = ","),
+          "\n\nDay Change: ", as.character(market_stats()$dayChange)
         ) else ""
         
         rsi_section <- paste0("\n\n", rsi_status, "\n")
-        amount_section <- paste0("\n\nدرصد برای خرید (Amount of BUY)= ", input$buy_percent , "\nدرصد برای فروش (Amount of SELL)= ", input$sell_percent)
+        amount_section <- paste0("\n\nAmount of BUY= ", input$buy_percent , "\nAmount of SELL= ", input$sell_percent)
         
         new_output <- paste0(
-          "بروزرسانی شماره ", refresh_count(), ":\n\n",
-          "قیمت (price): ", price_str, "\n\n",
-          "بهترین قیمت فروش (Ask): ", ask_str, "\n\n",
-          "بهترین قیمت خرید (Bid): ", bid_str, "\n\n",
-          "اختلاف درصدی خرید و فروش (spread): ", diff_str, "\n\n",
-          "زمان فعلی (Current Time): ", format(data$update_time, "%Y-%m-%d %H:%M:%S"),
+          "Update No. ", refresh_count(), ":\n\n",
+          "Price: ", price_str, "\n\n",
+          "Best Ask: ", ask_str, "\n\n",
+          "Best Bid: ", bid_str, "\n\n",
+          "Bid-Ask Spread (%): ", diff_str, "\n\n",
+          "Current Time: ", format(data$update_time, "%Y-%m-%d %H:%M:%S"),
           ma_text,
           rsi_section, stats_text, amount_section,
           wallet_status_text, wallet_assets_text
         )
       } else {
-        new_output <- paste0("بروزرسانی شماره ", refresh_count(), ":\n\nدریافت داده با خطا مواجه شد.\n")
+        new_output <- paste0("Update No. ", refresh_count(), ":\n\nData fetch failed.\n")
       }
       
       previous <- output_log()
@@ -451,19 +450,19 @@ server <- function(input, output) {
   })
   
   output$price_header <- renderText({
-    base_name <- ifelse(input$base == "irt", "تومان", "تتر")
-    paste("قیمت", toupper(input$crypto), "بر حسب", base_name)
+    base_name <- ifelse(input$base == "irt", "Tether", "Toman")
+    paste("Price of", toupper(input$crypto), "in", base_name)
   })
   
   output$price_output <- renderText({
     if (nchar(output_log()) == 0) {
-      "لطفاً ابتدا دکمه بروزرسانی را بزنید"
+      "Please press the update button first"
     } else {
       output_log()
     }
   })
 }
 
-# اجرای برنامه
+# Run the app
 shinyApp(ui, server)
 ```
